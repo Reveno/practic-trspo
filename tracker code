@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Locator з параметрами</title>
+  <script src="https://www.openlayers.org/en/v4.6.5/build/ol.js"></script>
+  <style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #18392B;
+        color: #fff;
+    }
+
+    header {
+        background-color: #18392B; 
+        color: #fff;
+        padding: 10px;
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        text-transform: uppercase;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    #map {
+        width: 100%;
+        height: 400px;
+        border-radius: 16px;
+        margin-top: 20px;
+        background-color: #322D31;
+        border: 2px solid #ddd;
+        box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    #params-panel {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background-color: #333333;
+        padding: 20px;
+        border-radius: 12px;
+        width: 200px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        color: #fff;
+        z-index: 1000;
+    }
+
+    #params-panel h3 {
+        margin-top: 0;
+        color: #00b4d8;
+        font-weight: 700;
+        font-size: 20px;
+    }
+
+    #params-panel label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+        color: #ffffff;
+        font-size: 16px;
+    }
+
+    #params-panel input[type="range"] {
+        width: 100%;
+        margin-bottom: 20px;
+        background-color: #444;
+        color: #fff;
+        border-radius: 8px;
+        padding: 5px 0;
+    }
+
+    #params-panel input[type="text"] {
+        width: 100%;
+        padding: 12px 8px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        background-color: #2a2a2a;
+        color: #fff;
+        font-size: 16px;
+        transition: border-color 0.3s;
+    }
+
+    #params-panel input[type="text"]:focus {
+        border-color: #00b4d8;
+        outline: none;
+    }
+
+    #params-panel button {
+        background: linear-gradient(90deg, #ff0021, #ffa500);
+        color: #fff;
+        padding: 14px 20px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: bold;
+        transition: background-color 0.3s;
+        width: 100%;
+    }
+
+    #params-panel button:hover {
+        background: linear-gradient(90deg, #ffa500, #ff0021);
+    }
+
+    @media (max-width: 768px) {
+        #map, #params-panel {
+            width: 95%;
+        }
+
+        header {
+            font-size: 18px;
+        }
+
+        #params-panel button {
+            font-size: 14px;
+        }
+    }
+</style>
+
+</head>
+<body>
+
+<div id="map"></div>
+<div id="params-panel">
+  <h3>Параметри карти</h3>
+  <label for="zoom-level">Зум:</label>
+  <input type="range" id="zoom-level" min="1" max="20" value="14">
+  <br>
+  <label for="latitude">Широта:</label>
+  <input type="text" id="latitude" value="46.447907">
+  <br>
+  <label for="longitude">Довгота:</label>
+  <input type="text" id="longitude" value="30.732013">
+  <br>
+  <button id="update-center">Оновити центр</button>
+</div>
+
+<script>
+  let map, marker, gpsDataDiv;
+
+  function initMap() {
+    map = new ol.Map({
+      target: 'map',
+      layers: [
+        new ol.layer.Tile({
+          source: new ol.source.OSM()
+        })
+      ],
+      view: new ol.View({
+        center: ol.proj.fromLonLat([30.732013, 46.447907]),
+        zoom: 14
+      })
+    });
+
+    marker = new ol.Feature();
+    marker.setStyle(new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 6,
+        fill: new ol.style.Fill({color: 'red'}),
+        stroke: new ol.style.Stroke({color: 'white', width: 2})
+      })
+    }));
+
+    const vectorLayer = new ol.layer.Vector({
+      source: new ol.source.Vector({
+        features: [marker]
+      })
+    });
+
+    map.addLayer(vectorLayer);
+
+    gpsDataDiv = document.getElementById('gps-data');
+    document.getElementById('update-center').addEventListener('click', updateMapCenter);
+  }
+
+  function updateZoomLevel() {
+    const zoomValue = document.getElementById('zoom-level').value;
+    map.getView().setZoom(Number(zoomValue));
+  }
+
+  function updateMapCenter() {
+    const lat = parseFloat(document.getElementById('latitude').value);
+    const lng = parseFloat(document.getElementById('longitude').value);
+    map.getView().setCenter(ol.proj.fromLonLat([lng, lat]));
+    marker.setGeometry(new ol.geom.Point(ol.proj.fromLonLat([lng, lat])));
+  }
+
+  function getGPSLocation() {
+    navigator.geolocation.getCurrentPosition(
+      function(position) {
+        const coords = position.coords;
+        const coordinates = [coords.longitude, coords.latitude];
+        updateMapCenter();
+        document.getElementById('latitude').value = coords.latitude.toFixed(6);
+        document.getElementById('longitude').value = coords.longitude.toFixed(6);
+      },
+      function(error) {
+        console.error('Error getting GPS coordinates:', error);
+      }
+    );
+  }
+
+  document.addEventListener('DOMContentLoaded', initMap);
+  document.getElementById('zoom-level').addEventListener('input', updateZoomLevel);
+  setInterval(getGPSLocation, 2000);
+</script>
+
+</body>
+</html>
